@@ -1,0 +1,62 @@
+name: 24/7 OmniRoute Keep-Alive Loop
+
+on:
+  repository_dispatch:
+    types: [loop_worker]
+  workflow_dispatch: # Allows you to manually click "Run" to kickstart the first execution
+
+jobs:
+  run-container-service:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write  # Crucial: Gives the runner permission to call the next loop
+
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install Runtime Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Make Script Executable
+        run: chmod +x entrypoint.py
+
+      - name: Run Automated Sync Environment
+        env:
+          # Pull keys securely from GitHub Repository Secrets
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_DATASET_NAME: ${{ secrets.HF_DATASET_NAME }}
+          OMNIROUT_DATA_DIR: ${{ github.workspace }}/data
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Create data target directory
+          mkdir -p $OMNIROUT_DATA_DIR
+          
+          # 1. Execute entrypoint directly on runner hardware (runs initial download + app start sequence)
+          # Note: To loop via GitHub Actions, we wrap execution directly using our Python pipeline agent
+          python3 entrypoint.py &
+          PID=$!
+          
+          # 2. Simulate execution uptime (GitHub Actions runners have a strict 6-hour ceiling)
+          # We pause here for 5.5 hours, then trigger a clean shutdown cycle to persist changes
+          sleep 19800
+          
+          print "[*] 5.5 Hours reached. Gracefully stopping to sync state..."
+          kill -15 $PID
+          wait $PID
+
+          # 3. Request GitHub API to provision a fresh, unthrottled environment block immediately
+          echo "[*] Triggering next cycle..."
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            -d '{"event_type": "loop_worker"}'
