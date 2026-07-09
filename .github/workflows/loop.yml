@@ -47,8 +47,11 @@ jobs:
             --network host \
             -e INITIAL_PASSWORD="${{ secrets.INITIAL_PASSWORD }}" \
             -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            -e OMNI_JWT_SECRET="${{ secrets.JWT_SECRET }}" \
             -e API_KEY_SECRET="${{ secrets.API_KEY_SECRET }}" \
+            -e OMNI_API_KEY_SECRET="${{ secrets.API_KEY_SECRET }}" \
             -e STORAGE_ENCRYPTION_KEY="${{ secrets.STORAGE_ENCRYPTION_KEY }}" \
+            -e OMNI_STORAGE_ENCRYPTION_KEY="${{ secrets.STORAGE_ENCRYPTION_KEY }}" \
             -e PORT=20128 \
             -v ${{ github.workspace }}/data:/app/data \
             diegosouzapw/omniroute:latest
@@ -58,7 +61,7 @@ jobs:
             --network host \
             cloudflare/cloudflared:latest \
             tunnel run --token "${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}"
-
+            
       - name: Background Auto-Sync Loop (Custom Secret Delay)
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
