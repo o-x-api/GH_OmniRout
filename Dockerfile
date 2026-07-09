@@ -3,6 +3,8 @@ FROM diegosouzapw/omniroute:latest
 # Set production defaults
 ENV PORT=20128
 ENV HOSTNAME=0.0.0.0
+ENV HOST=0.0.0.0
+ENV OMNIROUTE_SERVER_HOST=0.0.0.0
 ENV NODE_ENV=production
 ENV DATA_DIR=/app/data
 

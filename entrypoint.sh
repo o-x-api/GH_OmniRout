@@ -11,6 +11,8 @@ export INITIAL_PASSWORD="${INITIAL_PASSWORD}"
 export JWT_SECRET="${JWT_SECRET}"
 export API_KEY_SECRET="${API_KEY_SECRET}"
 export STORAGE_ENCRYPTION_KEY="${STORAGE_ENCRYPTION_KEY}"
+export HOST="0.0.0.0"
+export OMNIROUTE_SERVER_HOST="0.0.0.0"
 # ===========================================================
 
 echo "[$(date +'%T')] --- OmniRoute /app/data Yedekleme Başlatıldı ---"

@@ -23,7 +23,7 @@ docker build -t custom-omniroute -f "$SCRIPT_DIR/Dockerfile" "$SCRIPT_DIR"
 mkdir -p "$REPO_DIR/data"
 
 echo "🐳 Launching OmniRoute Container..."
-docker rm -f omniroute-instance || true
+docker rm -f omniroute-instance 2>/dev/null || true
 docker run -d --name omniroute-instance \
   -p 20128:20128 \
   -v "$REPO_DIR/data:/app/data" \
@@ -37,6 +37,11 @@ docker run -d --name omniroute-instance \
   -e BASE_URL="${BASE_URL:-}" \
   -e SYNC_DELY="${SYNC_DELY:-}" \
   custom-omniroute
+
+# Stream the container's logs to stdout so we can see the OmniRoute boot and sync log messages in GitHub Actions
+echo "🪵 Streaming container logs to stdout..."
+docker logs -f omniroute-instance &
+LOGS_PID=$!
 
 # 4. Initialize Cloudflare Edge Routing
 echo "🌐 Spin up edge tunnel..."
@@ -55,6 +60,12 @@ shutdown() {
     echo ""
     echo "[$(date +'%T')] ⚠️ Shutdown signal detected! Initializing backup sequence..."
     
+    # Terminate Container Log Stream
+    if [ -n "${LOGS_PID:-}" ]; then
+        echo "🛑 Terminating docker logs stream..."
+        kill "$LOGS_PID" 2>/dev/null || true
+    fi
+
     # Terminate Cloudflare Tunnel
     if [ -n "${TUNNEL_PID:-}" ]; then
         echo "🛑 Terminating cloudflared tunnel..."
