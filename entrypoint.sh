@@ -105,6 +105,19 @@ echo "[DEBUG] JWT_SECRET length: ${#JWT_SECRET}"
 echo "[DEBUG] STORAGE_ENCRYPTION_KEY length: ${#STORAGE_ENCRYPTION_KEY}"
 echo "[DEBUG] API_KEY_SECRET length: ${#API_KEY_SECRET}"
 
+# Print MD5 and keys before startup
+echo "[DEBUG] Before startup server.env MD5: $(md5sum /app/data/server.env | cut -d' ' -f1)"
+echo "[DEBUG] Before startup keys:"
+grep -o '^[A-Za-z0-9_]*' /app/data/server.env || true
+
+# Monitor if server.env gets modified or rewritten by the server process
+(
+    sleep 15
+    echo "[DEBUG] 15s after startup server.env MD5: $(md5sum /app/data/server.env | cut -d' ' -f1)"
+    echo "[DEBUG] 15s after startup keys:"
+    grep -o '^[A-Za-z0-9_]*' /app/data/server.env || true
+) &
+
 export INITIAL_PASSWORD="${INITIAL_PASSWORD:-}"
 export HOST="0.0.0.0"
 export OMNIROUTE_SERVER_HOST="0.0.0.0"
