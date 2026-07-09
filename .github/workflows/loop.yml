@@ -16,10 +16,13 @@ jobs:
       - name: Install Hugging Face CLI
         run: pip install huggingface_hub
 
-      - name: Create Structure Directories
+      - name: Create Structure Directories & Fix Permissions
         run: |
           mkdir -p ${{ github.workspace }}/data
           mkdir -p ${{ github.workspace }}/config
+          # Crucial: Fix host directory permissions so Docker has uninhibited write access
+          sudo chmod -R 777 ${{ github.workspace }}/data
+          sudo chmod -R 777 ${{ github.workspace }}/config
 
       - name: Restore Data Layer from Hugging Face
         env:
@@ -41,6 +44,7 @@ jobs:
           except Exception as e:
               print(f'[!] Dataset not found or empty ({e}). Starting fresh.')
           "
+          sudo chmod -R 777 ${{ github.workspace }}/data
 
       - name: Generate OmniRoute Configuration File
         run: |
@@ -54,13 +58,21 @@ jobs:
           BASE_URL="${{ secrets.BASE_URL }}"
           NEXT_PUBLIC_BASE_URL="${{ secrets.BASE_URL }}"
           EOF
+          sudo chmod 777 ${{ github.workspace }}/config/server.env
 
       - name: Spin up OmniRoute and Cloudflare Containers
         run: |
-          # Boot OmniRoute using the newly generated configuration mapping
+          # We provide the configurations via both -e variables AND file mount to guarantee detection
           docker run -d \
             --name omniroute \
             --network host \
+            -e INITIAL_PASSWORD="${{ secrets.INITIAL_PASSWORD }}" \
+            -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            -e API_KEY_SECRET="${{ secrets.API_KEY_SECRET }}" \
+            -e STORAGE_ENCRYPTION_KEY="${{ secrets.STORAGE_ENCRYPTION_KEY }}" \
+            -e PORT=20128 \
+            -e BASE_URL="${{ secrets.BASE_URL }}" \
+            -e NEXT_PUBLIC_BASE_URL="${{ secrets.BASE_URL }}" \
             -v ${{ github.workspace }}/data:/app/data \
             -v ${{ github.workspace }}/config/server.env:/root/.omniroute/server.env \
             diegosouzapw/omniroute:latest
