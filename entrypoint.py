@@ -36,7 +36,6 @@ def backup_to_hf():
         return
     print(f"[*] Committing state changes to HF Dataset: {HF_DATASET}...")
     try:
-        # Automatically creates dataset if it doesn't exist yet
         api.create_repo(repo_id=HF_DATASET, repo_type="dataset", exist_ok=True)
         api.upload_folder(
             folder_path=LOCAL_DATA_DIR,
@@ -55,27 +54,24 @@ def handle_shutdown(signum, frame):
     sys.exit(0)
 
 if __name__ == "__main__":
-    # Register Docker exit intercept hooks (SIGTERM & SIGINT)
     signal.signal(signal.SIGTERM, handle_shutdown)
     signal.signal(signal.SIGINT, handle_shutdown)
 
-    # 1. Pull current data layers down
+    # 1. Pull dataset from Hugging Face before launching application
     restore_from_hf()
 
-    # 2. Boot the primary OmniRoute application framework
-    print("[*] Launching underlying OmniRoute gateway service...")
+    # 2. Boot the official pre-built image's actual launch sequence
+    print("[*] Launching underlying official OmniRoute production image...")
     
-    # OmniRoute is built on Node.js/TypeScript. We pass execution to npm start.
-    process = subprocess.Popen(["npm", "start"], cwd="/app")
+    # We hand over execution to the original OmniRoute entrypoint command
+    process = subprocess.Popen(["node", "standalone/server.js"], cwd="/app")
 
     # Monitor runtime execution status
     while process.poll() is None:
         try:
-            # Wait for signals or check every 60 seconds
             process.wait(timeout=60)
         except subprocess.TimeoutExpired:
             continue
 
-    # If the app exits on its own, trigger a final backup pass
     print("[*] Main application process terminated internally.")
     backup_to_hf()
